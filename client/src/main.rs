@@ -2,8 +2,9 @@ use std::time::Duration;
 
 use anyhow::{anyhow, Result};
 use futures::{stream::FuturesUnordered, TryStreamExt as _};
-use hyper::{body::to_bytes, Body, Client, Method, Request, Version};
-use tower::{timeout::Timeout, Service as _};
+use hyper::{body::to_bytes, Body, Method, Request, Version, client::conn::SendRequest};
+use tokio::{net::TcpStream, time::timeout};
+use tower::{Service as _, ServiceExt as _};
 
 use stilsoft_common::call_timing::CallTimedService;
 
@@ -14,18 +15,37 @@ async fn main() -> Result<()> {
         .ok_or_else(|| anyhow!("nreqs not given"))?
         .parse()?;
 
-    let mut client = CallTimedService::new(Timeout::new(
-        Client::builder().http2_only(true).build_http::<Body>(),
-        Duration::from_secs(2),
-    ));
+    let mut client = CallTimedService::new(
+        timeout(Duration::from_secs(2), connect()).await??
+    );
 
-    let mut futs: FuturesUnordered<_> = (1..=nreqs).map(|i| client.call(mk_req(i))).collect();
+    let mut futs = FuturesUnordered::new();
 
-    while let Some(res) = futs.try_next().await.map_err(|e| anyhow!(e))? {
+    for i in 1..=nreqs {
+        let req = mk_req(i);
+        client.ready().await?;
+        futs.push(client.call(req));
+    }
+
+    while let Some(res) = futs.try_next().await? {
         println!("{}", to_bytes(res.into_body()).await?.escape_ascii());
     }
 
     Ok(())
+}
+
+async fn connect() -> Result<SendRequest<Body>> {
+    let stream = TcpStream::connect("localhost:8080").await?;
+    let (sender, connection) = hyper::client::conn::Builder::new()
+        .http2_only(true)
+        .handshake(stream)
+        .await?;
+    tokio::spawn(async move {
+        if let Err(e) = connection.await {
+            eprintln!("Error in connection: {}", e);
+        }
+    });
+    Ok(sender)
 }
 
 fn mk_req(i: u32) -> Request<Body> {
