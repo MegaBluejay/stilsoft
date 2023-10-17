@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, Result, bail};
 use futures::{stream::FuturesUnordered, TryStreamExt as _};
 use hyper::{body::to_bytes, Body, Method, Request, Version, client::conn::SendRequest};
 use tokio::{net::TcpStream, time::timeout};
@@ -14,6 +14,10 @@ async fn main() -> Result<()> {
         .nth(1)
         .ok_or_else(|| anyhow!("nreqs not given"))?
         .parse()?;
+
+    if !(1..=100).contains(&nreqs) {
+        bail!("nreqs not in range: {}", nreqs);
+    }
 
     let mut client = CallTimedService::new(
         timeout(Duration::from_secs(2), connect()).await??
