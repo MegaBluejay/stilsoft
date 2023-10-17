@@ -1,6 +1,7 @@
 use std::{
     convert::Infallible,
     fmt::Display,
+    io::ErrorKind,
     net::SocketAddr,
     process::exit,
     sync::{Arc, Mutex},
@@ -25,22 +26,30 @@ async fn main() -> Result<()> {
     let listener = TcpListener::bind(addr).await?;
     let semaphore = Arc::new(Semaphore::new(5));
 
+    let broken_pipes = Arc::new(Mutex::new(0));
     let mut connection_handler = CallTimedService::new(service_fn(handle_conn));
-    let connection_timing = connection_handler.call_timing.clone();
 
+    let ctrlc_broken_pipes = broken_pipes.clone();
+    let ctrlc_conn_timing = connection_handler.call_timing.clone();
     ctrlc::set_handler(move || {
-        println!("connections: {}", connection_timing.lock().unwrap());
+        println!(
+            "connections: {}, broken pipes: {}",
+            ctrlc_conn_timing.lock().unwrap(),
+            ctrlc_broken_pipes.lock().unwrap()
+        );
         exit(0);
     })?;
 
     loop {
         let permit = semaphore.clone().acquire_owned().await.unwrap();
         let (stream, _) = listener.accept().await?;
-        tokio::task::spawn(connection_handler.call((permit, stream)));
+        tokio::task::spawn(connection_handler.call((permit, stream, broken_pipes.clone())));
     }
 }
 
-async fn handle_conn((permit, mut stream): (OwnedSemaphorePermit, TcpStream)) -> Result<()> {
+async fn handle_conn(
+    (permit, mut stream, broken_pipes): (OwnedSemaphorePermit, TcpStream, Arc<Mutex<u32>>),
+) -> Result<()> {
     let start = Instant::now();
     let mut request_handler = CallTimedService::new(service_fn(handle_request));
 
@@ -50,6 +59,13 @@ async fn handle_conn((permit, mut stream): (OwnedSemaphorePermit, TcpStream)) ->
         .await
     {
         eprintln!("Error serving: {}", err);
+        if let Some(cause) = err.into_cause() {
+            if let Some(io_err) = cause.downcast_ref::<std::io::Error>() {
+                if io_err.kind() == ErrorKind::BrokenPipe {
+                    *broken_pipes.lock().unwrap() += 1;
+                }
+            }
+        }
     }
     drop(stream);
     drop(permit);
