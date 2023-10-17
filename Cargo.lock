@@ -590,6 +590,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "stilsoft-common"
+version = "0.0.0"
+dependencies = [
+ "futures",
+ "humantime",
+ "smart-default",
+ "tower",
+]
+
+[[package]]
 name = "stilsoft-server"
 version = "0.0.0"
 dependencies = [
@@ -599,7 +609,7 @@ dependencies = [
  "humantime",
  "hyper",
  "rand",
- "smart-default",
+ "stilsoft-common",
  "tokio",
  "tower",
 ]
