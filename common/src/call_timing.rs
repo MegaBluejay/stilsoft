@@ -1,4 +1,9 @@
-use std::{time::{Duration, Instant}, sync::{Arc, Mutex}, task, fmt::Display};
+use std::{
+    fmt::Display,
+    sync::{Arc, Mutex},
+    task,
+    time::{Duration, Instant},
+};
 
 use futures::future::BoxFuture;
 use humantime::format_duration;

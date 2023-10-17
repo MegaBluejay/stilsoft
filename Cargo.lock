@@ -586,7 +586,9 @@ dependencies = [
  "anyhow",
  "futures",
  "hyper",
+ "stilsoft-common",
  "tokio",
+ "tower",
 ]
 
 [[package]]

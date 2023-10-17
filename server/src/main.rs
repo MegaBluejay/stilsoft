@@ -10,12 +10,12 @@ use std::{
 use anyhow::Result;
 use humantime::format_duration;
 use hyper::{server::conn::Http, Body, Request, Response};
-use rand::{thread_rng, Rng};
+use rand::{thread_rng, Rng as _};
 use tokio::{
     net::{TcpListener, TcpStream},
     sync::{OwnedSemaphorePermit, Semaphore},
 };
-use tower::{service_fn, Service};
+use tower::{service_fn, Service as _};
 
 use stilsoft_common::call_timing::CallTimedService;
 

@@ -7,4 +7,6 @@ edition = "2018"
 anyhow = "1.0.75"
 futures = "0.3.28"
 hyper = { version = "0.14.27", features = ["client", "http2", "tcp"] }
+stilsoft-common = { version = "0.0.0", path = "../common" }
 tokio = { version = "1.33.0", features = ["full"] }
+tower = "0.4.13"
