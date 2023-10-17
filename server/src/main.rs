@@ -14,6 +14,7 @@ use futures::future::BoxFuture;
 use humantime::format_duration;
 use hyper::{server::conn::Http, Body, Request, Response};
 use rand::{thread_rng, Rng};
+use smart_default::SmartDefault;
 use tokio::{
     net::{TcpListener, TcpStream},
     sync::{OwnedSemaphorePermit, Semaphore},
@@ -84,23 +85,16 @@ async fn handle_request(req: Request<Body>) -> Result<Response<Body>, Infallible
     Ok(Response::new(Body::from(req.uri().path().to_owned())))
 }
 
-#[derive(Debug)]
+#[derive(SmartDefault, Debug)]
 struct CallTiming {
+    #[default(0)]
     number: u32,
+    #[default(Duration::MAX)]
     min: Duration,
+    #[default(Duration::ZERO)]
     max: Duration,
+    #[default(Duration::ZERO)]
     sum: Duration,
-}
-
-impl Default for CallTiming {
-    fn default() -> Self {
-        Self {
-            number: 0,
-            min: Duration::MAX,
-            max: Duration::ZERO,
-            sum: Duration::ZERO,
-        }
-    }
 }
 
 impl CallTiming {
