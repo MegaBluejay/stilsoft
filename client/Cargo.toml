@@ -5,6 +5,7 @@ edition = "2018"
 
 [dependencies]
 anyhow = "1.0.75"
+clap = { version = "4.4.6", features = ["derive"] }
 futures = "0.3.28"
 hyper = { version = "0.14.27", features = ["client", "http2", "tcp"] }
 stilsoft-common = { version = "0.0.0", path = "../common" }

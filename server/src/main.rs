@@ -8,6 +8,7 @@ use std::{
 };
 
 use anyhow::Result;
+use clap::Parser;
 use humantime::format_duration;
 use hyper::{server::conn::Http, Body, Request, Response};
 use rand::{thread_rng, Rng as _};
@@ -21,8 +22,8 @@ use stilsoft_common::call_timing::CallTimedService;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let addr: SocketAddr = "127.0.0.1:8080".parse()?;
-    let listener = TcpListener::bind(addr).await?;
+    let cli = Cli::parse();
+    let listener = TcpListener::bind(cli.addr).await?;
     let semaphore = Arc::new(Semaphore::new(5));
 
     let broken_pipes = Arc::new(Mutex::new(0));
@@ -81,4 +82,10 @@ async fn handle_request(req: Request<Body>) -> Result<Response<Body>, Infallible
     let delay = thread_rng().gen_range(100..=500);
     tokio::time::sleep(Duration::from_millis(delay)).await;
     Ok(Response::new(Body::from(req.uri().path().to_owned())))
+}
+
+#[derive(Parser)]
+struct Cli {
+    #[arg(long, help = "socket address, e.g. 127.0.0.1:8080")]
+    addr: SocketAddr,
 }

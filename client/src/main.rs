@@ -1,6 +1,7 @@
 use std::time::Duration;
 
-use anyhow::{anyhow, Result, bail};
+use anyhow::{Result, bail};
+use clap::Parser;
 use futures::{stream::FuturesUnordered, TryStreamExt as _};
 use hyper::{body::to_bytes, Body, Method, Request, Version, client::conn::SendRequest};
 use tokio::{net::TcpStream, time::timeout};
@@ -10,10 +11,8 @@ use stilsoft_common::call_timing::CallTimedService;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let nreqs: u32 = std::env::args()
-        .nth(1)
-        .ok_or_else(|| anyhow!("nreqs not given"))?
-        .parse()?;
+    let cli = Cli::parse();
+    let nreqs = cli.nreqs;
 
     if !(1..=100).contains(&nreqs) {
         bail!("nreqs not in range: {}", nreqs);
@@ -59,4 +58,10 @@ fn mk_req(i: u32) -> Request<Body> {
         .uri(format!("http://localhost:8080/{}", i))
         .body(Body::default())
         .unwrap()
+}
+
+#[derive(Parser)]
+struct Cli {
+    #[arg(long, help = "number of requests to make")]
+    nreqs: u32,
 }

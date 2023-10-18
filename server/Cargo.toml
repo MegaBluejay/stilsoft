@@ -5,6 +5,7 @@ edition = "2018"
 
 [dependencies]
 anyhow = "1.0.75"
+clap = { version = "4.4.6", features = ["derive"] }
 ctrlc = "3.4.1"
 futures = "0.3.28"
 humantime = "2.1.0"
