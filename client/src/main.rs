@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use anyhow::{Result, bail};
+use anyhow::Result;
 use clap::Parser;
 use futures::{stream::FuturesUnordered, TryStreamExt as _};
 use hyper::{body::to_bytes, Body, Method, Request, Version, client::conn::SendRequest};
@@ -13,10 +13,6 @@ use stilsoft_common::call_timing::CallTimedService;
 async fn main() -> Result<()> {
     let cli = Cli::parse();
     let nreqs = cli.nreqs;
-
-    if !(1..=100).contains(&nreqs) {
-        bail!("nreqs not in range: {}", nreqs);
-    }
 
     let mut client = CallTimedService::new(
         timeout(Duration::from_secs(2), connect()).await??
@@ -62,6 +58,6 @@ fn mk_req(i: u32) -> Request<Body> {
 
 #[derive(Parser)]
 struct Cli {
-    #[arg(long, help = "number of requests to make")]
+    #[arg(long, help = "number of requests to make", value_parser=1..=100)]
     nreqs: u32,
 }
