@@ -1,4 +1,4 @@
-use std::time::Duration;
+use std::{time::Duration, net::SocketAddr};
 
 use anyhow::{Result, bail, Context as _};
 use clap::clap_app;
@@ -12,6 +12,7 @@ use stilsoft_common::call_timing::CallTimedService;
 #[tokio::main]
 async fn main() -> Result<()> {
     let matches = clap_app!(stilsoft_client =>
+        (@arg addr: --addr +takes_value +required "server address, e.g 127.0.0.1:8080")
         (@arg nreqs: --nreqs +takes_value +required "number of requests to make")
     )
     .get_matches();
@@ -19,8 +20,9 @@ async fn main() -> Result<()> {
     if !(1..100).contains(&nreqs) {
         bail!("nreqs should be between 1 and 100");
     }
+    let addr: SocketAddr = matches.value_of("addr").unwrap().parse().context("invalid addr")?;
 
-    let mut client = CallTimedService::new(timeout(Duration::from_secs(2), connect()).await??);
+    let mut client = CallTimedService::new(timeout(Duration::from_secs(2), connect(addr)).await??);
 
     let mut futs = FuturesUnordered::new();
 
@@ -40,8 +42,8 @@ async fn main() -> Result<()> {
     Ok(())
 }
 
-async fn connect() -> Result<SendRequest<Body>> {
-    let stream = TcpStream::connect("localhost:8080").await?;
+async fn connect(addr: SocketAddr) -> Result<SendRequest<Body>> {
+    let stream = TcpStream::connect(addr).await?;
     let (sender, connection) = hyper::client::conn::Builder::new()
         .http2_only(true)
         .handshake(stream)
