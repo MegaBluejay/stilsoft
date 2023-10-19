@@ -1,3 +1,7 @@
+# Building
+
+Please build with `cargo --frozen` to make sure the correct dependency versions get used
+
 # Usage
 
 ```
