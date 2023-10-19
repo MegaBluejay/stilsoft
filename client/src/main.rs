@@ -1,6 +1,6 @@
-use std::{time::Duration, net::SocketAddr};
+use std::{net::SocketAddr, time::Duration};
 
-use anyhow::{Result, bail, Context as _};
+use anyhow::{bail, Context as _, Result};
 use clap::clap_app;
 use futures::{stream::FuturesUnordered, TryStreamExt as _};
 use hyper::{body::to_bytes, client::conn::SendRequest, Body, Method, Request, Version};
@@ -16,11 +16,19 @@ async fn main() -> Result<()> {
         (@arg nreqs: --nreqs +takes_value +required "number of requests to make")
     )
     .get_matches();
-    let nreqs: u32 = matches.value_of("nreqs").unwrap().parse().context("nreqs not an integer")?;
+    let nreqs: u32 = matches
+        .value_of("nreqs")
+        .unwrap()
+        .parse()
+        .context("nreqs not an integer")?;
     if !(1..100).contains(&nreqs) {
         bail!("nreqs should be between 1 and 100");
     }
-    let addr: SocketAddr = matches.value_of("addr").unwrap().parse().context("invalid addr")?;
+    let addr: SocketAddr = matches
+        .value_of("addr")
+        .unwrap()
+        .parse()
+        .context("invalid addr")?;
 
     let mut client = CallTimedService::new(timeout(Duration::from_secs(2), connect(addr)).await??);
 
