@@ -7,43 +7,50 @@ use std::{
 
 use futures::future::BoxFuture;
 use humantime::format_duration;
-use smart_default::SmartDefault;
 use tower::Service;
 
-#[derive(SmartDefault, Debug)]
-pub struct CallTiming {
-    #[default(0)]
+#[derive(Debug)]
+struct SomeCallTiming {
     pub number: u32,
-    #[default(Duration::new(u64::MAX, u32::MAX))]
     pub min: Duration,
-    #[default(Duration::new(0, 0))]
     pub max: Duration,
-    #[default(Duration::new(0, 0))]
     pub sum: Duration,
 }
 
+#[derive(Default)]
+pub struct CallTiming(Option<SomeCallTiming>);
+
 impl CallTiming {
     pub fn add(&mut self, duration: Duration) {
-        self.number += 1;
-        self.min = self.min.min(duration);
-        self.max = self.max.max(duration);
-        self.sum += duration;
+        if let Some(timing) = &mut self.0 {
+            timing.number += 1;
+            timing.min = timing.min.min(duration);
+            timing.max = timing.max.max(duration);
+            timing.sum += duration;
+        } else {
+            self.0 = Some(SomeCallTiming {
+                number: 1,
+                min: duration,
+                max: duration,
+                sum: duration,
+            });
+        }
     }
 }
 
 impl Display for CallTiming {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        if self.number == 0 {
-            write!(f, "number=0")
-        } else {
+        if let Some(timing) = &self.0 {
             write!(
                 f,
                 "number={}, min={}, max={}, avg={}",
-                self.number,
-                format_duration(self.min),
-                format_duration(self.max),
-                format_duration(self.sum / self.number),
+                timing.number,
+                format_duration(timing.min),
+                format_duration(timing.max),
+                format_duration(timing.sum / timing.number),
             )
+        } else {
+            write!(f, "number=0")
         }
     }
 }
@@ -56,7 +63,7 @@ pub struct CallTimedService<S> {
 impl<S> CallTimedService<S> {
     pub fn new(inner: S) -> Self {
         Self {
-            call_timing: Arc::new(Mutex::new(CallTiming::default())),
+            call_timing: Arc::new(Mutex::new(Default::default())),
             inner,
         }
     }
