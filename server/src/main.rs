@@ -1,14 +1,13 @@
 use std::{
     convert::Infallible,
     io::ErrorKind,
-    net::SocketAddr,
     process::exit,
     sync::{Arc, Mutex},
     time::{Duration, Instant},
 };
 
 use anyhow::Result;
-use clap::Parser;
+use clap::clap_app;
 use humantime::format_duration;
 use hyper::{server::conn::Http, Body, Request, Response};
 use rand::{thread_rng, Rng as _};
@@ -22,8 +21,12 @@ use stilsoft_common::call_timing::CallTimedService;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let cli = Cli::parse();
-    let listener = TcpListener::bind(cli.addr).await?;
+    let cli = clap_app!(stilsoft_server =>
+        (@arg addr: --addr +takes_value +required "socket address, e.g. 127.0.0.1:8080")
+    )
+    .get_matches();
+    let addr = cli.value_of("addr").unwrap();
+    let listener = TcpListener::bind(addr).await?;
     let semaphore = Arc::new(Semaphore::new(5));
 
     let broken_pipes = Arc::new(Mutex::new(0));
@@ -48,14 +51,14 @@ async fn main() -> Result<()> {
 }
 
 async fn handle_conn(
-    (permit, mut stream, broken_pipes): (OwnedSemaphorePermit, TcpStream, Arc<Mutex<u32>>),
+    (permit, stream, broken_pipes): (OwnedSemaphorePermit, TcpStream, Arc<Mutex<u32>>),
 ) -> Result<()> {
     let start = Instant::now();
     let mut request_handler = CallTimedService::new(service_fn(handle_request));
 
     if let Err(err) = Http::new()
         .http2_only(true)
-        .serve_connection(&mut stream, &mut request_handler)
+        .serve_connection(stream, &mut request_handler)
         .await
     {
         eprintln!("Error serving: {}", err);
@@ -67,7 +70,7 @@ async fn handle_conn(
             }
         }
     }
-    drop(stream);
+
     drop(permit);
 
     println!(
@@ -82,10 +85,4 @@ async fn handle_request(req: Request<Body>) -> Result<Response<Body>, Infallible
     let delay = thread_rng().gen_range(100..=500);
     tokio::time::sleep(Duration::from_millis(delay)).await;
     Ok(Response::new(Body::from(req.uri().path().to_owned())))
-}
-
-#[derive(Parser)]
-struct Cli {
-    #[arg(long, help = "socket address, e.g. 127.0.0.1:8080")]
-    addr: SocketAddr,
 }

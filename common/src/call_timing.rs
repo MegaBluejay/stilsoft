@@ -14,11 +14,11 @@ use tower::Service;
 pub struct CallTiming {
     #[default(0)]
     pub number: u32,
-    #[default(Duration::MAX)]
+    #[default(Duration::new(u64::MAX, u32::MAX))]
     pub min: Duration,
-    #[default(Duration::ZERO)]
+    #[default(Duration::new(0, 0))]
     pub max: Duration,
-    #[default(Duration::ZERO)]
+    #[default(Duration::new(0, 0))]
     pub sum: Duration,
 }
 

@@ -1,7 +1,7 @@
 use std::time::Duration;
 
 use anyhow::Result;
-use clap::Parser;
+use clap::clap_app;
 use futures::{stream::FuturesUnordered, TryStreamExt as _};
 use hyper::{body::to_bytes, Body, Method, Request, Version, client::conn::SendRequest};
 use tokio::{net::TcpStream, time::timeout};
@@ -11,8 +11,10 @@ use stilsoft_common::call_timing::CallTimedService;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let cli = Cli::parse();
-    let nreqs = cli.nreqs;
+    let matches = clap_app!(stilsoft_client =>
+        (@arg nreqs: --nreqs +takes_value +required "number of requests to make")
+    ).get_matches();
+    let nreqs: u32 = matches.value_of("nreqs").unwrap().parse()?;
 
     let mut client = CallTimedService::new(
         timeout(Duration::from_secs(2), connect()).await??
@@ -27,7 +29,7 @@ async fn main() -> Result<()> {
     }
 
     while let Some(res) = futs.try_next().await? {
-        println!("{}", to_bytes(res.into_body()).await?.escape_ascii());
+        println!("{}", String::from_utf8_lossy(&to_bytes(res.into_body()).await?));
     }
 
     Ok(())
@@ -54,10 +56,4 @@ fn mk_req(i: u32) -> Request<Body> {
         .uri(format!("http://localhost:8080/{}", i))
         .body(Body::default())
         .unwrap()
-}
-
-#[derive(Parser)]
-struct Cli {
-    #[arg(long, help = "number of requests to make", value_parser=1..=100)]
-    nreqs: u32,
 }
