@@ -11,10 +11,10 @@ use tower::Service;
 
 #[derive(Debug)]
 struct SomeCallTiming {
-    pub number: u32,
-    pub min: Duration,
-    pub max: Duration,
-    pub sum: Duration,
+    number: u32,
+    min: Duration,
+    max: Duration,
+    sum: Duration,
 }
 
 #[derive(Default)]
