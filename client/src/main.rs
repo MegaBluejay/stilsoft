@@ -3,7 +3,7 @@ use std::time::Duration;
 use anyhow::Result;
 use clap::clap_app;
 use futures::{stream::FuturesUnordered, TryStreamExt as _};
-use hyper::{body::to_bytes, Body, Method, Request, Version, client::conn::SendRequest};
+use hyper::{body::to_bytes, client::conn::SendRequest, Body, Method, Request, Version};
 use tokio::{net::TcpStream, time::timeout};
 use tower::{Service as _, ServiceExt as _};
 
@@ -13,12 +13,11 @@ use stilsoft_common::call_timing::CallTimedService;
 async fn main() -> Result<()> {
     let matches = clap_app!(stilsoft_client =>
         (@arg nreqs: --nreqs +takes_value +required "number of requests to make")
-    ).get_matches();
+    )
+    .get_matches();
     let nreqs: u32 = matches.value_of("nreqs").unwrap().parse()?;
 
-    let mut client = CallTimedService::new(
-        timeout(Duration::from_secs(2), connect()).await??
-    );
+    let mut client = CallTimedService::new(timeout(Duration::from_secs(2), connect()).await??);
 
     let mut futs = FuturesUnordered::new();
 
@@ -29,7 +28,10 @@ async fn main() -> Result<()> {
     }
 
     while let Some(res) = futs.try_next().await? {
-        println!("{}", String::from_utf8_lossy(&to_bytes(res.into_body()).await?));
+        println!(
+            "{}",
+            String::from_utf8_lossy(&to_bytes(res.into_body()).await?)
+        );
     }
 
     Ok(())

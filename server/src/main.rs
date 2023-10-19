@@ -62,12 +62,12 @@ async fn handle_conn(
         .await
     {
         eprintln!("Error serving: {}", err);
-        if let Some(cause) = err.into_cause() {
-            if let Some(io_err) = cause.downcast_ref::<std::io::Error>() {
-                if io_err.kind() == ErrorKind::BrokenPipe {
-                    *broken_pipes.lock().unwrap() += 1;
-                }
-            }
+        let err_kind = err
+            .into_cause()
+            .and_then(|cause| cause.downcast::<std::io::Error>().ok())
+            .map(|err| err.kind());
+        if err_kind == Some(ErrorKind::BrokenPipe) {
+            *broken_pipes.lock().unwrap() += 1;
         }
     }
 
